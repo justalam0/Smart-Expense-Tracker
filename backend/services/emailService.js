@@ -1,20 +1,14 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_APP_PASSWORD,
-  },
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /**
- * Sends a simple text email.
+ * Sends a simple text email using Resend HTTP API.
  */
 async function sendEmail(to, subject, text) {
   try {
-    await transporter.sendMail({
-      from: `"AI Expense Tracker" <${process.env.EMAIL_USER}>`,
+    await resend.emails.send({
+      from: `"FinTrack" <onboarding@resend.dev>`,
       to,
       subject,
       text,

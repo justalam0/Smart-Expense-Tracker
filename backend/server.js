@@ -10,6 +10,7 @@ const { startWeeklySummaryJob } = require("./jobs/weeklySummaryJob");
 const cors = require("cors");
 
 const app = express();
+app.set('trust proxy', 1);
 connectDB();
 
 

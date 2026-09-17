@@ -9,10 +9,10 @@ const loginLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// 2. Register Limiter: 3 requests per 1 hour
+// 2. Register Limiter: 10 requests per 1 hour
 const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 3,
+  max: 10,
   message: { error: 'Too many registration attempts, please try again after 1 hour' },
   standardHeaders: true,
   legacyHeaders: false,
