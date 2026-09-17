@@ -3,8 +3,10 @@ const { Resend } = require('resend');
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const sendOTP = async (to, otp) => {
-  await resend.emails.send({
-    from: 'FinTrack <onboarding@resend.dev>',
+  const fromEmail = process.env.RESEND_FROM_EMAIL || 'FinTrack <onboarding@resend.dev>';
+  
+  const { error } = await resend.emails.send({
+    from: fromEmail,
     to,
     subject: 'FinTrack - Your OTP Verification Code',
     html: `<div style="font-family: Arial, sans-serif; text-align: center; padding: 20px;">
@@ -14,6 +16,11 @@ const sendOTP = async (to, otp) => {
       <p>This code is valid for 10 minutes. Do not share it with anyone.</p>
     </div>`
   });
+
+  if (error) {
+    console.error('Resend API error:', error);
+    throw new Error(error.message || 'Failed to send email via Resend');
+  }
 };
 
 module.exports = { sendOTP };
