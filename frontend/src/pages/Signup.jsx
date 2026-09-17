@@ -23,16 +23,8 @@ export default function Signup() {
     setLoading(true);
     try {
       const res = await axiosInstance.post('/auth/signup', { name, email, password });
-
-      if (res.data.requiresOTP) {
-        // Email verification enabled: show OTP step
-        setMessage(res.data.message);
-        setStep(2);
-      } else {
-        // No email verification: directly log in
-        login(res.data.user, res.data.token);
-        navigate('/dashboard');
-      }
+      setMessage(res.data.message);
+      setStep(2);
     } catch (err) {
       setError(err.response?.data?.error || 'Signup failed');
     } finally {
@@ -97,7 +89,7 @@ export default function Signup() {
               />
               {error && <p style={{ color: 'var(--danger)', fontSize: 14 }}>{error}</p>}
               <button type="submit" disabled={loading} className="btn btn-primary btn-block">
-                {loading ? 'Creating Account...' : 'Sign Up'}
+                {loading ? 'Sending OTP...' : 'Sign Up'}
               </button>
             </form>
             <p style={{ fontSize: 14, marginTop: 18, textAlign: 'center' }}>

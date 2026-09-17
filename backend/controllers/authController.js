@@ -1,78 +1,47 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-
-// Check if Resend API key is configured and a verified domain is available
-const isEmailEnabled = !!process.env.RESEND_API_KEY && !!process.env.RESEND_FROM_EMAIL;
-
-let sendOTP;
-if (isEmailEnabled) {
-  sendOTP = require('../utils/mailer').sendOTP;
-}
+const { sendOTP } = require('../utils/mailer');
 
 exports.signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
     let user = await User.findOne({ email });
+    
+    // Generate a 6 digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    if (user && user.isVerified) {
-      return res.status(400).json({ error: 'User already exists and is verified' });
+    if (user) {
+      if (user.isVerified) {
+        return res.status(400).json({ error: 'User already exists and is verified' });
+      }
+      // If user exists but not verified, update OTP and send again
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user.password = hashedPassword;
+      user.name = name;
+      user.otp = otp;
+      user.otpExpires = otpExpires;
+      await user.save();
+    } else {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        otp,
+        otpExpires,
+        isVerified: false
+      });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    if (isEmailEnabled) {
-      // OTP flow: send verification email
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const otpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-      if (user) {
-        user.password = hashedPassword;
-        user.name = name;
-        user.otp = otp;
-        user.otpExpires = otpExpires;
-        await user.save();
-      } else {
-        user = await User.create({
-          name, email, password: hashedPassword,
-          otp, otpExpires, isVerified: false
-        });
-      }
-
-      try {
-        await sendOTP(email, otp);
-        res.status(200).json({ message: 'OTP sent to email. Please verify.', email: user.email, requiresOTP: true });
-      } catch (mailError) {
-        console.error('OTP email failed:', mailError);
-        res.status(500).json({ error: 'Failed to send OTP email. Please try again.' });
-      }
-    } else {
-      // No email service configured: skip OTP, auto-verify user
-      if (user) {
-        user.password = hashedPassword;
-        user.name = name;
-        user.isVerified = true;
-        user.otp = null;
-        user.otpExpires = null;
-        await user.save();
-      } else {
-        user = await User.create({
-          name, email, password: hashedPassword,
-          isVerified: true
-        });
-      }
-
-      const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-        expiresIn: '12h',
-      });
-
-      res.status(200).json({
-        message: 'Account created successfully!',
-        requiresOTP: false,
-        token,
-        user: { id: user._id, name: user.name, email: user.email }
-      });
+    try {
+      await sendOTP(email, otp);
+      res.status(200).json({ message: 'OTP sent to email. Please verify.', email: user.email });
+    } catch (mailError) {
+      console.error('OTP send failed:', mailError);
+      res.status(500).json({ error: 'Failed to send OTP email' });
     }
   } catch (err) {
     console.error('Signup error:', err);
